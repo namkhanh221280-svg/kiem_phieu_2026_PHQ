@@ -95,24 +95,22 @@
 				indexAxis: 'y',
 				plugins: {
 					legend: { display: false },
-					tooltip: {
-						callbacks: {
-							label: function(context) {
-								let label = context.dataset.label || '';
-								if (label) label += ': ';
+						tooltip: {
+							enabled: true,
+							callbacks: {
+								label: function(context) {
+									const votes = context.parsed.x;
+									// Tính tỷ lệ % dựa trên tổng phiếu HỢP LỆ
+									const totalValid = systemData.validBallots || 1;
+									const percent = ((votes / totalValid) * 100).toFixed(2);
                     
-								const votes = context.parsed.x; // Số phiếu thực tế
-								const totalValid = systemData.validBallots || 1; // Tránh chia cho 0
-								const percent = ((votes / totalValid) * 100).toFixed(1);
-                    
-								// Trả về định dạng: "Tâm Hiền: 3 phiếu tỷ lệ 80%"
-								return `${context.getLabel()}: ${votes} phiếu tỷ lệ ${percent}%`;
+									return ` ${context.label}: ${votes} phiếu - Tỷ lệ ${percent}%`;
+								}
 							}
 						}
-					}
 				},
 				scales: {
-					x: { beginAtZero: true }
+					x: { beginAtZero: true, ticks: { stepSize: 1 } }
 				}
 			}
         });
@@ -137,25 +135,34 @@
 
     function updateGroupProgress(groups) {
     let html = "";
-    const DINH_MUC = 3750; // Định mức mỗi tổ
+    const DINH_MUC_TO = 3750; // Chỉ tiêu mỗi tổ
 
     for(let i = 1; i <= 20; i++) {
         let count = groups[i] || 0;
-        let percent = ((count / DINH_MUC) * 100).toFixed(1);
+        let percent = Math.min((count / DINH_MUC_TO) * 100, 100);
         
+        // Màu sắc thay đổi theo tiến độ để Admin dễ quan sát
+        let colorClass = "bg-secondary"; // Chưa có phiếu
+        if (count > 0) colorClass = "bg-info"; // Bắt đầu làm
+        if (count > 2000) colorClass = "bg-primary"; // Đã được hơn nửa
+        if (count >= DINH_MUC_TO) colorClass = "bg-success"; // Đã hoàn thành
+
         html += `
             <div class="mb-3">
                 <div class="d-flex justify-content-between small mb-1">
                     <span class="fw-bold">Tổ ${i}</span>
-                    <span class="badge bg-primary">${count} phiếu (${percent}%)</span>
+                    <span class="fw-bold text-primary">${count.toLocaleString()} phiếu</span>
                 </div>
-                <div class="progress" style="height: 10px;">
-                    <div class="progress-bar bg-success" style="width: ${percent}%"></div>
+                <div class="progress" style="height: 10px; background-color: #e9ecef; border-radius: 5px;">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated ${colorClass}" 
+                         role="progressbar" 
+                         style="width: ${percent}%">
+                    </div>
                 </div>
             </div>`;
     }
     document.getElementById('group-progress').innerHTML = html;
-	}
+}
 
     // 3. Hàm xuất file Word (Tránh lỗi Render)
     async function generateDoc(templateName) {
