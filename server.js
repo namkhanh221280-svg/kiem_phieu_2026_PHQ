@@ -36,26 +36,25 @@ io.on('connection', (socket) => {
 
     // Xử lý khi nhận được phiếu bầu từ tổ kiểm phiếu
     socket.on('submit_ballot', (payload) => {
-        const { groupId, isValid, selectedIndexes } = payload;
+    const { groupId, isValid, selectedIndexes } = payload;
 
-        systemData.totalBallots++;
-        systemData.groups[groupId]++;
+    systemData.totalBallots++;
+    
+    // Dòng quan trọng: Cộng phiếu vào đúng tổ gửi lên
+    if (!systemData.groups[groupId]) systemData.groups[groupId] = 0;
+    systemData.groups[groupId]++; 
 
-        if (isValid) {
-            systemData.validBallots++;
-            // Cộng dồn phiếu cho từng ứng cử viên 
-            selectedIndexes.forEach(idx => {
-                if (systemData.votes[idx] !== undefined) {
-                    systemData.votes[idx]++;
-                }
-            });
-        } else {
-            systemData.invalidBallots++;
-        }
+    if (isValid) {
+        systemData.validBallots++;
+        selectedIndexes.forEach(idx => {
+            if (systemData.votes[idx] !== undefined) systemData.votes[idx]++;
+        });
+    } else {
+        systemData.invalidBallots++;
+    }
 
-        // Phát tín hiệu cập nhật số liệu mới cho TẤT CẢ các máy (bao gồm máy Admin)
-        io.emit('update_dashboard', systemData);
-    });
+    io.emit('update_dashboard', systemData);
+});
 
     // Reset dữ liệu (Chỉ Admin mới có quyền này)
     socket.on('reset_all_data', () => {
