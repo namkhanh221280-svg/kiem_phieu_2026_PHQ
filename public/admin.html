@@ -114,28 +114,16 @@
 
     function updateGroupProgress(groups) {
     let html = "";
-    // Vòng lặp chạy từ tổ 1 đến tổ 20
     for(let i = 1; i <= 20; i++) {
-        // Lấy số phiếu của tổ i từ dữ liệu server gửi về, nếu chưa có thì bằng 0
-        let count = groups[i] || 0; 
-        
-        // Tính phần trăm để hiển thị thanh tiến độ (giả định mục tiêu mỗi tổ là 3750 phiếu)
-        let percent = Math.min((count / 3750) * 100, 100); 
-
+        let count = groups[i] || 0; // Lấy số phiếu thực tế của tổ i
         html += `
-            <div class="mb-3">
-                <div class="d-flex justify-content-between align-items-center mb-1">
-                    <span class="fw-bold text-secondary">Tổ ${i}</span>
-                    <span class="badge bg-primary rounded-pill">${count.toLocaleString()} phiếu</span>
+            <div class="mb-2">
+                <div class="d-flex justify-content-between small">
+                    <span>Tổ ${i}</span>
+                    <span class="fw-bold text-primary">${count} phiếu</span>
                 </div>
-                <div class="progress" style="height: 10px; background-color: #e9ecef;">
-                    <div class="progress-bar progress-bar-striped progress-bar-animated bg-success" 
-                         role="progressbar" 
-                         style="width: ${percent}%" 
-                         aria-valuenow="${count}" 
-                         aria-valuemin="0" 
-                         aria-valuemax="3750">
-                    </div>
+                <div class="progress" style="height: 8px;">
+                    <div class="progress-bar bg-success" style="width: ${(count/3750)*100}%"></div>
                 </div>
             </div>`;
     }
