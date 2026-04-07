@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { margin: 0; overflow: hidden; background: #00a8ff; font-family: 'Segoe UI', sans-serif; }
+        #ocean-canvas { position: absolute; top: 0; left: 0; cursor: crosshair; z-index: 2; transition: opacity 2s; }
+        #background-ocean { 
+            position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; 
+            background: linear-gradient(#48dbfb, #0abde3); z-index: 1;
+            overflow: hidden;
+        }
+        
+        .creature-container {
+            position: absolute; width: 150px; display: flex; flex-direction: column;
+            align-items: center; z-index: 3; transition: left 8s linear, top 8s linear;
+        }
+
+        .sea-creature { 
+            width: 150px; transition: filter 0.8s ease; 
+            filter: brightness(0.4); /* Tối hơn lúc chưa cứu */
+        }
+        
+        /* Nhãn tên con cá */
+        .fish-name {
+            color: #fff; background: rgba(0,0,0,0.4); padding: 2px 10px;
+            border-radius: 10px; font-weight: bold; font-size: 18px;
+            margin-bottom: 5px; opacity: 0; transition: opacity 0.5s;
+            white-space: nowrap; text-shadow: 1px 1px 2px #000;
+        }
+
+        .is-saved .sea-creature { filter: brightness(1); animation: swim-soft 3s infinite ease-in-out; }
+        .is-saved .fish-name { opacity: 1; } /* Hiện tên khi đã cứu */
+
+        @keyframes swim-soft {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-15px) rotate(5deg); }
+        }
+
+        /* Bong bóng nước */
+        .bubble {
+            position: absolute; background: rgba(255, 255, 255, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.6); border-radius: 50%;
+            pointer-events: none; z-index: 5; animation: rise 1.5s forwards;
+        }
+
+        @keyframes rise {
+            0% { transform: translateY(0) scale(0.5); opacity: 1; }
+            100% { transform: translateY(-100px) scale(1.2); opacity: 0; }
+        }
+
+        .info-text { 
+            position: absolute; top: 20px; width: 100%; text-align: center; 
+            color: white; font-size: 24px; font-weight: bold; text-shadow: 2px 2px 5px rgba(0,0,0,0.3);
+            z-index: 10; pointer-events: none;
+        }
+        .btn-reset {
+            position: absolute; bottom: 20px; right: 20px; z-index: 20;
+            padding: 15px 30px; border-radius: 30px; border: none; background: #ff9f43;
+            color: white; font-weight: bold; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+
+        /* Vị trí ban đầu */
+        #c1 { top: 15%; left: 10%; } #c2 { top: 10%; left: 45%; }
+        #c3 { top: 20%; left: 75%; } #c4 { top: 45%; left: 25%; }
+        #c5 { top: 50%; left: 60%; } #c6 { top: 75%; left: 15%; }
+        #c7 { top: 80%; left: 50%; } #c8 { top: 70%; left: 80%; }
+    </style>
+</head>
+<body>
+
+    <div id="instruction" class="info-text">Bé hãy lau sạch rác để giải cứu các bạn cá nhé! 🌊</div>
+    
+    <div id="background-ocean">
+        <div id="c1" class="creature-container" data-name="Cá Heo">
+            <div class="fish-name">CÁ HEO</div>
+            <img src="hinh/caheo.png" class="sea-creature">
+        </div>
+        <div id="c2" class="creature-container" data-name="Rùa Biển">
+            <div class="fish-name">RÙA BIỂN</div>
+            <img src="hinh/rua.png" class="sea-creature">
+        </div>
+        <div id="c3" class="creature-container" data-name="Sao Biển">
+            <div class="fish-name">SAO BIỂN</div>
+            <img src="hinh/saobien.png" class="sea-creature">
+        </div>
+        <div id="c4" class="creature-container" data-name="Cá Mập">
+            <div class="fish-name">CÁ MẬP</div>
+            <img src="hinh/camap.png" class="sea-creature">
+        </div>
+        <div id="c5" class="creature-container" data-name="Cá Voi">
+            <div class="fish-name">CÁ VOI</div>
+            <img src="hinh/cavoi.png" class="sea-creature">
+        </div>
+        <div id="c6" class="creature-container" data-name="Bạch Tuộc">
+            <div class="fish-name">BẠCH TUỘC</div>
+            <img src="hinh/bachtuoc.png" class="sea-creature">
+        </div>
+        <div id="c7" class="creature-container" data-name="Cá Ngừ">
+            <div class="fish-name">CÁ NGỪ</div>
+            <img src="hinh/cangu.png" class="sea-creature">
+        </div>
+        <div id="c8" class="creature-container" data-name="Bạn Mực">
+            <div class="fish-name">BẠN MỰC</div>
+            <img src="hinh/muc.png" class="sea-creature">
+        </div>
+    </div>
+
+    <canvas id="ocean-canvas"></canvas>
+
+    <button class="btn-reset" onclick="location.reload()">Làm bẩn lại</button>
+    
+    <audio id="bell-sound" src="sound/bell.mp3"></audio>
+    <audio id="wave-sound" src="sound/waves.mp3" loop></audio>
+
+<script>
+    const canvas = document.getElementById('ocean-canvas');
+    const ctx = canvas.getContext('2d');
+    const bell = document.getElementById('bell-sound');
+    const waveSound = document.getElementById('wave-sound');
+    const containers = document.querySelectorAll('.creature-container');
+    const instruction = document.getElementById('instruction');
+    
+    let isDrawing = false;
+    let savedList = new Set();
+    let isFinished = false;
+
+    function init() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        ctx.fillStyle = '#7f8c8d';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        for(let i=0; i<150; i++) {
+            ctx.fillStyle = '#2c3e50';
+            ctx.beginPath();
+            ctx.arc(Math.random()*canvas.width, Math.random()*canvas.height, 5+Math.random()*30, 0, Math.PI*2);
+            ctx.fill();
+        }
+        ctx.globalCompositeOperation = 'destination-out';
+    }
+
+    function createBubble(x, y) {
+        const b = document.createElement('div');
+        b.className = 'bubble';
+        const size = Math.random() * 12 + 6;
+        b.style.width = b.style.height = size + 'px';
+        b.style.left = x + 'px'; b.style.top = y + 'px';
+        document.body.appendChild(b);
+        setTimeout(() => b.remove(), 1500);
+    }
+
+    function checkRescue() {
+        if(isFinished) return;
+        containers.forEach(container => {
+            if (savedList.has(container.id)) return;
+            const rect = container.getBoundingClientRect();
+            const pixel = ctx.getImageData(rect.left + rect.width/2, rect.top + rect.height/2, 1, 1).data;
+            
+            if (pixel[3] === 0) {
+                savedList.add(container.id);
+                container.classList.add('is-saved');
+                bell.currentTime = 0; bell.play();
+                speak(`Đây là ${container.getAttribute('data-name')}`);
+                if(savedList.size === 8) winGame();
+            }
+        });
+    }
+
+    function winGame() {
+        isFinished = true;
+        canvas.style.opacity = '0';
+        instruction.innerText = "Tuyệt vời! Đại dương bừng sáng rồi! 🎉";
+        speak("Tuyệt vời! Bé đã dọn sạch đại dương và nhận biết được các bạn cá rồi!");
+        
+        setTimeout(() => {
+            canvas.remove();
+            startSwimmingParty();
+        }, 2000);
+    }
+
+    function startSwimmingParty() {
+        containers.forEach(container => {
+            autoMove(container);
+            // Tạo tăm nước liên tục cho mỗi con cá
+            setInterval(() => {
+                const r = container.getBoundingClientRect();
+                createBubble(r.left + Math.random()*r.width, r.top + r.height/2);
+            }, 600);
+        });
+    }
+
+    function autoMove(el) {
+        if(!isFinished) return;
+        const newTop = Math.random() * 75 + 5 + '%';
+        const newLeft = Math.random() * 80 + 5 + '%';
+        
+        const curLeft = parseFloat(el.style.left) || 50;
+        const targetLeft = parseFloat(newLeft);
+        const img = el.querySelector('.sea-creature');
+        img.style.transform = targetLeft > curLeft ? "scaleX(-1)" : "scaleX(1)";
+
+        el.style.top = newTop;
+        el.style.left = newLeft;
+        setTimeout(() => autoMove(el), 7000 + Math.random() * 3000);
+    }
+
+    function scratch(e) {
+        if(!isDrawing || isFinished) return;
+        const x = e.clientX || (e.touches ? e.touches[0].clientX : 0);
+        const y = e.clientY || (e.touches ? e.touches[0].clientY : 0);
+        ctx.beginPath(); ctx.arc(x, y, 55, 0, Math.PI * 2); ctx.fill();
+        createBubble(x, y);
+        checkRescue();
+    }
+
+    canvas.addEventListener('mousedown', () => { isDrawing = true; waveSound.play().catch(e=>{}); });
+    window.addEventListener('mouseup', () => isDrawing = false);
+    canvas.addEventListener('mousemove', scratch);
+    canvas.addEventListener('touchstart', (e) => { isDrawing = true; waveSound.play().catch(e=>{}); e.preventDefault(); });
+    canvas.addEventListener('touchmove', (e) => { scratch(e); e.preventDefault(); });
+
+    function speak(text) {
+        window.speechSynthesis.cancel();
+        const msg = new SpeechSynthesisUtterance(text);
+        msg.lang = 'vi-VN';
+        //window.speechSynthesis.speak(msg);
+    }
+
+    init();
+    window.onload = () => speak("Bé hãy lau sạch rác để làm quen với các bạn cá nhé!");
+</script>
+</body>
+</html>
